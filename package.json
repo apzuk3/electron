@@ -9,7 +9,9 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "build-addon": "node-gyp rebuild",
+    "rebuild-addon": "node-gyp rebuild"
   },
   "keywords": [],
   "author": {
@@ -37,6 +39,7 @@
     "vite": "^5.4.21"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "node-addon-api": "^8.5.0"
   }
 }

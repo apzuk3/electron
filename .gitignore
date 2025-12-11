@@ -90,3 +90,9 @@ typings/
 
 # Electron-Forge
 out/
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.cursor/rules/snyk_rules.mdc
+
+build/
+bin
