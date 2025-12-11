@@ -13,11 +13,8 @@ import fs from "fs-extra";
 const config: ForgeConfig = {
   packagerConfig: {
     appBundleId: "app.focusd.work",
-    // Set the packaged app's icon. Provide these files in assets:
-    // - app_icon.icns (macOS)
-    // - app_icon.ico (Windows)
-    // - app_icon.png (Linux)
-    // icon: path.resolve(__dirname, "assets/app_icon"),
+    // Set the packaged app's icon
+    icon: path.resolve(__dirname, "assets/app_icon.png"),
     protocols: [
       {
         name: "Focusd Work",
@@ -32,11 +29,10 @@ const config: ForgeConfig = {
       unpack:
         "{**/node_modules/{better-sqlite3,bindings,file-uri-to-path}/**/*,**/*.node}",
     },
-    // Include the built React app from the electron-ui package under resources/react-dist
-    // extraResource: [
-    //   path.resolve(__dirname, "../electron-ui/react-dist"),
-    //   path.resolve(__dirname, "assets"),
-    // ],
+    // Include assets directory so tray icons are available in production
+    extraResource: [
+      path.resolve(__dirname, "assets"),
+    ],
     // Don't ignore node_modules for dependencies needed at runtime
     ignore: (path: string) => {
       if (!path) return false;

@@ -35,8 +35,9 @@ const isDev =
 // Resolve asset paths for dev vs production
 const resolveAssetPath = (fileName: string): string => {
   if (isDev) {
-    // In dev, use assets directly from the project
-    return path.resolve(__dirname, `../assets/${fileName}`);
+    // In dev, use assets directly from the project root
+    // Use process.cwd() since __dirname points to .vite/build in Vite output
+    return path.join(process.cwd(), "assets", fileName);
   }
   // In prod, Electron Forge copies assets to resources/assets
   return path.join(process.resourcesPath, "assets", fileName);
@@ -190,14 +191,21 @@ const createTray = () => {
       ? resolveAssetPath("tray_icon_22.png")
       : resolveAssetPath("tray_icon.png");
 
+  console.log("Tray icon path:", iconPath);
+  console.log("Tray icon exists:", fs.existsSync(iconPath));
+
   // Try to load the icon, fallback to empty image if not found
   let trayIcon: Electron.NativeImage;
   try {
     trayIcon = nativeImage.createFromPath(iconPath);
     if (trayIcon.isEmpty()) {
+      console.warn("Tray icon is empty, using fallback");
       trayIcon = nativeImage.createEmpty();
+    } else {
+      console.log("Tray icon loaded successfully");
     }
-  } catch {
+  } catch (error) {
+    console.error("Failed to load tray icon:", error);
     trayIcon = nativeImage.createEmpty();
   }
 
@@ -255,6 +263,25 @@ app.on("ready", () => {
 
   // Create window but keep it hidden initially
   mainWindow = createWindow();
+
+  // Set Dock icon from assets if provided (macOS)
+  if (process.platform === "darwin" && app.dock) {
+    const appIconPath = resolveAssetPath("app_icon.png");
+    console.log("App icon path:", appIconPath);
+    console.log("App icon exists:", fs.existsSync(appIconPath));
+    if (fs.existsSync(appIconPath)) {
+      const appIcon = nativeImage.createFromPath(appIconPath);
+      if (!appIcon.isEmpty()) {
+        app.dock.setIcon(appIcon);
+        console.log("App icon set successfully");
+      } else {
+        console.warn("App icon is empty");
+      }
+    } else {
+      console.warn("App icon file not found at:", appIconPath);
+    }
+    app.dock.hide();
+  }
 
   // Create system tray
   createTray();
