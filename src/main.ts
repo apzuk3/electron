@@ -16,6 +16,7 @@ import {
   stopAXEvents,
 } from "./darwin/index";
 import { dbService } from "./database/db";
+import { StaticFileServer } from "./utils/static-file-server";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -25,6 +26,7 @@ if (started) {
 // Store window reference globally for IPC handlers
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let staticServer: StaticFileServer | null = null;
 
 // Detect dev mode
 const isDev =
@@ -126,7 +128,7 @@ const setOnboardedState = (value: boolean): void => {
   }
 };
 
-const createWindow = () => {
+const createWindow = async () => {
   // Don't create if window already exists
   if (mainWindow && !mainWindow.isDestroyed()) {
     return mainWindow;
@@ -142,14 +144,33 @@ const createWindow = () => {
     show: false,
   });
 
-  // and load the index.html of the app.
+  // Load the app
+  let loadUrl: string;
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    // Dev mode: use Vite dev server
+    loadUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL;
   } else {
-    mainWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
-    );
+    // Production mode: start static file server
+    if (!staticServer) {
+      const distPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);
+      staticServer = new StaticFileServer(distPath);
+      try {
+        loadUrl = await staticServer.start();
+        console.log(`Static file server started at ${loadUrl}`);
+      } catch (error) {
+        console.error("Failed to start static file server:", error);
+        throw error;
+      }
+    } else {
+      const serverUrl = staticServer.getUrl();
+      if (!serverUrl) {
+        throw new Error("Static server exists but has no URL");
+      }
+      loadUrl = serverUrl;
+    }
   }
+
+  await mainWindow.loadURL(loadUrl);
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
@@ -257,12 +278,12 @@ const createTray = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on("ready", () => {
+app.on("ready", async () => {
   // Initialize database
   dbService.initialize();
 
   // Create window but keep it hidden initially
-  mainWindow = createWindow();
+  mainWindow = await createWindow();
 
   // Set Dock icon from assets if provided (macOS)
   if (process.platform === "darwin" && app.dock) {
@@ -347,15 +368,20 @@ app.on("will-quit", () => {
     tray.destroy();
     tray = null;
   }
+  // Stop static file server
+  if (staticServer) {
+    staticServer.stop();
+    staticServer = null;
+  }
   dbService.close();
 });
 
-app.on("activate", () => {
+app.on("activate", async () => {
   // Check onboarding state - only show window if not onboarded
   const isOnboarded = getOnboardedState();
   if (!isOnboarded) {
     if (!mainWindow || mainWindow.isDestroyed()) {
-      mainWindow = createWindow();
+      mainWindow = await createWindow();
     }
     if (mainWindow.isMinimized()) {
       mainWindow.restore();
