@@ -152,7 +152,9 @@ const createWindow = async () => {
   } else {
     // Production mode: start static file server
     if (!staticServer) {
-      const distPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);
+      // In production, renderer files are in src/renderer/.vite/renderer/main_window inside the asar
+      const distPath = path.join(__dirname, `../../src/renderer/.vite/renderer/${MAIN_WINDOW_VITE_NAME}`);
+      console.log(`Looking for renderer files at: ${distPath}`);
       staticServer = new StaticFileServer(distPath);
       try {
         loadUrl = await staticServer.start();
